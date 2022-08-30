@@ -1,0 +1,7 @@
+12/11/2020
+5
+2000000 Private 12/29/2025 false
+400000 Public 07/01/2020 false
+5000000 Public 01/02/2024 false
+3000000 Public 12/26/2023 false
+200000 Private 12/29/2025 true
