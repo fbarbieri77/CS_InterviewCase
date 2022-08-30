@@ -86,3 +86,7 @@ namespace ConsoleApp_CSCase
         }
     }
 }
+
+/* Question 2
+ * In order to have an extensible design allowing new categories to be added easily, I would require the categories to be passed as an array of strings. 
+ * In this way, I just need to include the new category in the interface ITrade and implement it in the class Trade recalling I know the position of each category in parameters[].
