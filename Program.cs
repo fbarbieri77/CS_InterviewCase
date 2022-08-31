@@ -67,7 +67,7 @@ namespace ConsoleApp_CSCase
         static void Main(string[] args)
         {
             // upload portfolio with trades
-            string[] lines = System.IO.File.ReadAllLines(@"C:\Users\FB\source\repos\ConsoleApp-CSCase\Portfolio1.txt");
+            string[] lines = System.IO.File.ReadAllLines(@"Portfolio1.txt");
             string referenceDate = lines[0];
             int numberOfTrades;
             if (!int.TryParse(lines[1], out numberOfTrades) || numberOfTrades != lines.Length - 2)
@@ -90,3 +90,4 @@ namespace ConsoleApp_CSCase
 /* Question 2
  * In order to have an extensible design allowing new categories to be added easily, I would require the categories to be passed as an array of strings. 
  * In this way, I just need to include the new category in the interface ITrade and implement it in the class Trade recalling I know the position of each category in parameters[].
+ */
