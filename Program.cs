@@ -20,7 +20,7 @@ namespace ConsoleApp_CSCase
             public string ClientSector { get; }
             public DateTime NextPaymentDate { get; }
             public bool IsPoliticallyExposed { get; }
-            public Trade(string _referenceDate, string[] paramenters)
+            public Trade(string _referenceDate, string[] parameters)
             {
                 /* _referenceDate: trade reference date in "MM/dd/yyyy"
                  * parameters[x]
@@ -31,10 +31,10 @@ namespace ConsoleApp_CSCase
                  */
 
                 ReferenceDate = DateTime.ParseExact(_referenceDate, "MM/dd/yyyy", CultureInfo.InvariantCulture);
-                Value = double.Parse(paramenters[0]);
-                ClientSector = paramenters[1];
-                NextPaymentDate = DateTime.ParseExact(paramenters[2], "MM/dd/yyyy", CultureInfo.InvariantCulture);
-                IsPoliticallyExposed = paramenters[3] == "true";
+                Value = double.Parse(parameters[0]);
+                ClientSector = parameters[1];
+                NextPaymentDate = DateTime.ParseExact(parameters[2], "MM/dd/yyyy", CultureInfo.InvariantCulture);
+                IsPoliticallyExposed = parameters[3] == "true"; // there must be a 4th column in the input file with either true or false value
             }
 
             public string Classify()
