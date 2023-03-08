@@ -2,9 +2,22 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Security.Authentication.ExtendedProtection;
+using ConsoleApp_CSCase.Category;
+using Microsoft.Extensions.DependencyInjection;
+using StructureMap;
+using Container = StructureMap.Container;
 
 namespace ConsoleApp_CSCase
 {
+    interface ICategory
+    {
+        string Name { get; }
+        bool Identify(ITrade trade);
+    }
     interface ITrade
     {
         double Value { get; }
@@ -13,126 +26,65 @@ namespace ConsoleApp_CSCase
         bool IsPoliticallyExposed { get; }
     }
 
-    interface ICategory
-    {
-        string Name { get; }
-        bool Identify(ITrade trade);
-    }
 
+    [Flags]
     enum EnumAllCategories
     {
-        EXPIRED,
-        MEDIUMRISK,
-        HIGHRISK,
+        Expired,
+        MediumRisk,
+        HighRisk,
         PEP,
-        NA,
+        NotCategorised,
     }
 
     class Program
     {
-        public class Expired : ICategory
+        public class GetCategoryFactory
         {
-            private readonly DateTime referenceDate;
-
-            public string Name
+            public ICategory Create(string categoryAssemblyName, string referenceDate)
             {
-                get
+                var type = Type.GetType(categoryAssemblyName ?? throw new InvalidOperationException());
+                if (type == typeof(Expired))
                 {
-                    return "EXPIRED";
+                    return Activator.CreateInstance(type, referenceDate) as ICategory;
                 }
-            }
-            public Expired (string _referenceDate)
-            {
-                referenceDate = DateTime.ParseExact(_referenceDate, "MM/dd/yyyy", CultureInfo.InvariantCulture);
-            }
-
-            public bool Identify(ITrade trade)
-            {
-                return referenceDate > trade.NextPaymentDate.AddDays(30);
-            }
-        }
-
-        public class MediumRisk : ICategory
-        {
-            public string Name
-            {
-                get
+                else
                 {
-                    return "MEDIUMRISK";
+                    return Activator.CreateInstance(type) as ICategory;
                 }
             }
 
-            public bool Identify(ITrade trade)
+            public ICategory GetCategory(EnumAllCategories category, string referenceDate)
             {
-                return trade.Value > 1000000 && trade.ClientSector == "Public";
-            }
-        }
-
-        public class HighRisk : ICategory
-        {
-            public string Name 
-            {
-                get
+                var categoryAssemblyName = $"ConsoleApp_CSCase.Category.{category}, ConsoleApp-CSCase";
+               // Type t = typeof(MediumRisk);
+               // var name = t.AssemblyQualifiedName;
+                var type = Type.GetType(categoryAssemblyName ?? throw new InvalidOperationException());
+                if (type == typeof(Expired))
                 {
-                    return "HIGHRISK";
+                    return Activator.CreateInstance(type, referenceDate) as ICategory;
                 }
-            }
-
-            public bool Identify(ITrade trade) 
-            {
-                return trade.Value > 1000000 && trade.ClientSector == "Private";
-            }
-        }
-
-        public class PEP : ICategory
-        {
-            public string Name
-            {
-                get
+                else
                 {
-                    return "PEP";
+                    return Activator.CreateInstance(type) as ICategory;
                 }
+                
             }
-
-            public bool Identify(ITrade trade)
-            {
-                return trade.IsPoliticallyExposed;
-            }
-        }
-
-        public class NotCategorised : ICategory
-        {
-            public string Name
-            {
-                get
-                {
-                    return "Not categorised";
-                }
-            }
-
-            public bool Identify(ITrade trade)
-            {
-                return true;
-            }
-        }
-
-        class GetCategoryFactory
-        {
             public ICategory GetCategory(string categoryType, string referenceDate)
             {
                 if (categoryType == null)
                 {
                     return null;
                 }
-                else if (categoryType == EnumAllCategories.EXPIRED.ToString())
+                else if (categoryType == EnumAllCategories.Expired.ToString())
                 {
                     return new Expired(referenceDate);
                 }
-                else if (categoryType == EnumAllCategories.MEDIUMRISK.ToString())
+                else if (categoryType == EnumAllCategories.MediumRisk.ToString())
                 {
                     return new MediumRisk();
                 }
-                else if (categoryType == EnumAllCategories.HIGHRISK.ToString())
+                else if (categoryType == EnumAllCategories.HighRisk.ToString())
                 {
                     return new HighRisk();
                 }
@@ -140,7 +92,7 @@ namespace ConsoleApp_CSCase
                 {
                     return new PEP();
                 }
-                else if (categoryType == EnumAllCategories.NA.ToString())
+                else if (categoryType == EnumAllCategories.NotCategorised.ToString())
                 {
                     return new NotCategorised();
                 }
@@ -151,22 +103,42 @@ namespace ConsoleApp_CSCase
             public List<ICategory> GetAllCategories(string referenceDate)
             {
                 List<ICategory> categories = new List<ICategory>();
-                foreach (string categoryName in Enum.GetNames(typeof(EnumAllCategories)))
+                // Option using Switch
+                /*foreach (string categoryName in Enum.GetNames(typeof(EnumAllCategories)))
                 {
                     categories.Add(this.GetCategory(categoryName, referenceDate));
+                    
+                }*/
+
+                // Option using Activator
+                /* foreach (EnumAllCategories category in Enum.GetValues(typeof(EnumAllCategories)))
+                 {
+                     categories.Add(this.GetCategory(category, referenceDate));
+                 }*/
+
+                // using classes in a namespace instead of enum
+                 var types = Assembly
+                     .GetExecutingAssembly()
+                     .GetTypes()
+                     .Where(t => t.Namespace == "ConsoleApp_CSCase.Category");
+                foreach (var category in types)
+                {
+                    categories.Add(this.Create(category.FullName, referenceDate));
                 }
+
                 return categories;
+
             }
         }
 
-        class Trade : ITrade
+        public class Trade : ITrade
         {
             public double Value { get; }
             public string ClientSector { get; }
             public DateTime NextPaymentDate { get; }
             public bool IsPoliticallyExposed { get; }
 
-            public Trade(string _referenceDate, string[] parameters)
+            public Trade(string[] parameters)
             {
                 Value = double.Parse(parameters[0]);
                 ClientSector = parameters[1];
@@ -188,13 +160,47 @@ namespace ConsoleApp_CSCase
                 return;
             }
 
-            // classifiy trades
+            // Category Factory
             GetCategoryFactory categoryFactory = new GetCategoryFactory();
             List<ICategory> categories = categoryFactory.GetAllCategories(referenceDate);
+
+            // Getting categories using dependency injection
+            /*
+            var services = new ServiceCollection()
+                .AddSingleton<ICategory>(new  Expired(referenceDate))
+                .AddSingleton<ICategory, HighRisk>()
+                .AddSingleton<ICategory, MediumRisk>()
+                .AddSingleton<ICategory, PEP>()
+                .AddSingleton<ICategory, NotCategorised>()
+                .BuildServiceProvider();
+
+            var categories = services.GetServices<ICategory>();
+            */
+
+            // Getting categories using StructuredMap and dependency injection
+            /*
+            var services = new ServiceCollection();
+            var container = new Container();
+            container.Configure(config =>
+            {
+                config.Scan(_ =>
+                {
+                    _.AssemblyContainingType(typeof(Program));
+                    _.WithDefaultConventions();
+                });
+                config.Populate(services);
+            });
+
+            var serviceProvider = container.GetInstance<IServiceProvider>();
+            
+            IEnumerable<ICategory> categories = serviceProvider.GetServices<ICategory>();
+            */
+
+            // classifiy trades
             for (int i = 2; i < lines.Length; i++)
             {
                 string[] tradeData = lines[i].Split(" ");
-                Trade trade = new Trade(referenceDate, tradeData);
+                Trade trade = new Trade(tradeData);
 
                 foreach (ICategory category in categories)
                 {
@@ -205,6 +211,8 @@ namespace ConsoleApp_CSCase
                     }
                 }
             }
+
+
         }
 
     }
